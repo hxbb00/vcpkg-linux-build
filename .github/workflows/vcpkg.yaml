@@ -31,7 +31,7 @@ jobs:
 
       - name: Install GDAL via vcpkg
         run: |
-          ./vcpkg/vcpkg install gdal[core,pdal] --triplet x64-linux
+          ./vcpkg/vcpkg install gdal --triplet x64-linux
 
       - name: Verify GDAL and LAS driver
         run: |
