@@ -1,6 +1,6 @@
 name: Install vcpkg
 
-# 仅支持手动触发：在 GitHub 仓库 Actions 页面点击 Run workflow 执行
+# 仅手动触发
 on:
   workflow_dispatch:
 
@@ -12,30 +12,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 安装 vcpkg 依赖工具（Linux 编译必备）
+      # 安装系统级编译依赖
       - name: Install system dependencies
         run: |
-          sudo apt update && sudo apt install -y build-essential cmake ninja-build curl zip unzip tar
+          sudo apt update && sudo apt install -y build-essential cmake ninja-build curl zip unzip tar pkg-config libssl-dev
 
-      # 配置 vcpkg 环境
-      - name: Set up vcpkg
-        uses: lukka/run-vcpkg@v11
+      # 1. Checkout vcpkg 官方仓库
+      - name: Checkout vcpkg from GitHub
+        uses: actions/checkout@v4
         with:
-          vcpkgDirectory: ${{ runner.workspace }}/vcpkg
-          vcpkgTriplet: x64-linux
+          repository: microsoft/vcpkg
+          path: ${{ runner.workspace }}/vcpkg
+          ref: master  # 可指定稳定版本 tag，如 2025.05.23
 
-      # 安装带 PDAL 驱动的 GDAL（支持 LAS/LAZ）
+      # 2. Bootstrap 初始化 vcpkg（生成可执行文件）
+      - name: Bootstrap vcpkg
+        run: |
+          cd ${{ runner.workspace }}/vcpkg
+          ./bootstrap-vcpkg.sh -disableMetrics  # 关闭数据统计，加速初始化
+          chmod +x ./vcpkg  # 确保可执行权限
+
+      # 3. 安装带 PDAL 驱动的 GDAL
       - name: Install GDAL via vcpkg
-        run: vcpkg install gdal[core,pdal] --triplet x64-linux
+        run: |
+          ${{ runner.workspace }}/vcpkg/vcpkg install gdal[core,pdal] --triplet x64-linux
         shell: bash
 
       # 验证安装结果
       - name: Verify GDAL and LAS driver
         run: |
-          export PATH="$RUNNER_WORKSPACE/vcpkg/installed/x64-linux/bin:$PATH"
+          export PATH="${{ runner.workspace }}/vcpkg/installed/x64-linux/bin:$PATH"
           # 检查 GDAL 版本
           gdalinfo --version
-          # 检查 LAS 驱动是否存在
+          # 检查 LAS 驱动
           gdalinfo --formats | grep -i LAS
-          ls $RUNNER_WORKSPACE/vcpkg/installed/x64-linux
+          # 列出安装目录结构
+          ls ${{ runner.workspace }}/vcpkg/installed/x64-linux
         shell: bash
