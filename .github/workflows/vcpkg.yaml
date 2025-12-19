@@ -1,6 +1,5 @@
 name: Install vcpkg
 
-# 仅手动触发
 on:
   workflow_dispatch:
 
@@ -12,40 +11,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 安装系统级编译依赖
       - name: Install system dependencies
         run: |
           sudo apt update && sudo apt install -y build-essential cmake ninja-build curl zip unzip tar pkg-config libssl-dev
 
-      # 1. Checkout vcpkg 官方仓库
+      # 关键修正：path 改为 github.workspace 下的相对路径
       - name: Checkout vcpkg from GitHub
         uses: actions/checkout@v4
         with:
           repository: microsoft/vcpkg
-          path: ${{ runner.workspace }}/vcpkg
-          ref: master  # 可指定稳定版本 tag，如 2025.05.23
+          path: vcpkg  # 会被解析为 ${github.workspace}/vcpkg
+          ref: master
 
-      # 2. Bootstrap 初始化 vcpkg（生成可执行文件）
       - name: Bootstrap vcpkg
         run: |
-          cd ${{ runner.workspace }}/vcpkg
-          ./bootstrap-vcpkg.sh -disableMetrics  # 关闭数据统计，加速初始化
-          chmod +x ./vcpkg  # 确保可执行权限
+          cd vcpkg
+          ./bootstrap-vcpkg.sh -disableMetrics
+          chmod +x ./vcpkg
 
-      # 3. 安装带 PDAL 驱动的 GDAL
       - name: Install GDAL via vcpkg
         run: |
-          ${{ runner.workspace }}/vcpkg/vcpkg install gdal[core,pdal] --triplet x64-linux
-        shell: bash
+          ./vcpkg/vcpkg install gdal[core,pdal] --triplet x64-linux
 
-      # 验证安装结果
       - name: Verify GDAL and LAS driver
         run: |
-          export PATH="${{ runner.workspace }}/vcpkg/installed/x64-linux/bin:$PATH"
-          # 检查 GDAL 版本
+          export PATH="$PWD/vcpkg/installed/x64-linux/bin:$PATH"
           gdalinfo --version
-          # 检查 LAS 驱动
           gdalinfo --formats | grep -i LAS
-          # 列出安装目录结构
-          ls ${{ runner.workspace }}/vcpkg/installed/x64-linux
+          ls $PWD/vcpkg/installed/x64-linux
         shell: bash
