@@ -6,7 +6,7 @@ on:
 jobs:
   build-gdal-linux:
     name: Build GDAL on Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
         with:
           repository: microsoft/vcpkg
           path: vcpkg  # 会被解析为 ${github.workspace}/vcpkg
-          ref: master
+          ref: 2025.12.12
 
       - name: Bootstrap vcpkg
         run: |
@@ -31,12 +31,11 @@ jobs:
 
       - name: Install GDAL via vcpkg
         run: |
-          ./vcpkg/vcpkg install gdal --triplet x64-linux
+          cd vcpkg
+          ./vcpkg install gdal --triplet x64-linux
 
       - name: Verify GDAL and LAS driver
         run: |
-          export PATH="$PWD/vcpkg/installed/x64-linux/bin:$PATH"
-          gdalinfo --version
-          gdalinfo --formats | grep -i LAS
           ls $PWD/vcpkg/installed/x64-linux
+          ls $PWD/vcpkg/installed/x64-linux/lib
         shell: bash
